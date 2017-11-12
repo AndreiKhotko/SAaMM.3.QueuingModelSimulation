@@ -25,8 +25,10 @@ namespace QueuingModel
         public float RelativeThroughput => (float)outputs / inputs;
 
         /// <summary>
-        /// Current tick in system
+        /// Special tick counter to calculate AverageRequestTimeInSystem
         /// </summary>
+        public int T { get; private set; }
+
         public int TicksCount { get; private set; }
 
         /// <summary>
@@ -168,6 +170,7 @@ namespace QueuingModel
             inputs = 0;
             outputs = 0;
 
+            T = 0;
             TicksCount = 0;
             Channel1Counter = 0;
         }
@@ -177,8 +180,10 @@ namespace QueuingModel
         /// </summary>
         public void NextTick()
         {
-            TicksCount += 1;
-            
+            T += RequestCount;
+
+            TicksCount++;
+
             isRo = generator.GetNext() <= Ro; // true <==> Источник не выдал заявку
             isPi1 = generator.GetNext() <= Pi1; // true <==> Первый канал не обработал заявку
             isPi2 = generator.GetNext() <= Pi2; // true <==> Второй канал не обработал заявку
@@ -191,13 +196,12 @@ namespace QueuingModel
             if (CurrentState.ChannelOne == 1)
                 Channel1Counter++;
 
-            if (CurrentState.ChannelOne == 1 && CurrentState.Queue == 2 && CurrentState.ChannelTwo == 1 && isPi2 &&
-                !isPi1)
+            if (CurrentState.Queue == 2 && CurrentState.ChannelTwo == 1 && isPi2)
             {
-                TicksCount -= Channel1Counter;
+                T -= Channel1Counter;
                 Channel1Counter = 0;
             }
-            else if (!isPi1)
+            else if (CurrentState.ChannelOne == 1 && isPi1)
                 Channel1Counter = 0;
 
                 
@@ -226,7 +230,7 @@ namespace QueuingModel
         /// <summary>
         /// One of the system parameter
         /// </summary>
-        public float AverageRequestTimeInSystem => (float)TicksCount / outputs;
+        public float AverageRequestTimeInSystem => (float)T / outputs;
 
         /// <summary>
         /// Determines whether the value is between 0 and 1
